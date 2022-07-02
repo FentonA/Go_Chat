@@ -37,7 +37,13 @@ func NewChat() (*Database, error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &Database{mongo: client.Database("Chat")}, nil
+	db := client.Database("Go_Chat")
+	command := bson.D{{"create", "Chat"}}
+	var result bson.M
+	if err := db.RunCommand(context.TODO(), command).Decode(&result); err != nil {
+		log.Fatal(err)
+	}
+	return &Database{mongo: client.Database("Go_Chat")}, nil
 }
 
 func (d *Database) Item(ID primitive.ObjectID) (*Messages, error) {
