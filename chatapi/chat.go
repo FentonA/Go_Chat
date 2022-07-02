@@ -28,21 +28,6 @@ type Database struct {
 }
 
 func NewChat() (*Database, error) {
-	// var client *Database.client
-	// uri := "mongodb+srv://gochat:gochat@cluster0.usyps.mongodb.net/?retryWrites=true&w=majority"
-	// opts := options.Client()
-	// opts.ApplyURI(uri)
-	// opts.SetMaxPoolSize(5)
-	// if client, err := mongo.Connect(context.Background(), opts); err != nil {
-	// 	fmt.Println(err.Error())
-	// 	fmt.Println(client)
-	// }
-	// var result bson.M
-	// command := bson.D{{"create", "Chat"}}
-	// conn := client.Database("gochat")
-	// if err := conn.RunCommand(context.TODO(), command).Decode(&result); err != nil {
-	// 	log.Fatal(err)
-	// }
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb+srv://gochat:gochat@cluster0.usyps.mongodb.net/?retryWrites=true&w=majority"))
 	if err != nil {
 		log.Fatal(err)
