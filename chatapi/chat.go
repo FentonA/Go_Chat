@@ -3,6 +3,7 @@ package chat
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,8 +16,6 @@ var (
 	Ctx = context.TODO()
 )
 
-const dbPath = ""
-
 type Messages struct {
 	Id       primitive.ObjectID `bson:"_id,omitempty"`
 	Sender   string
@@ -24,41 +23,61 @@ type Messages struct {
 	Text     string
 }
 
-func InitiateMongoClient() *mongo.Database {
-	var client *mongo.Client
-	uri := "mongodb+srv://gochat:gochat@cluster0.usyps.mongodb.net/?retryWrites=true&w=majority"
-	opts := options.Client()
-	opts.ApplyURI(uri)
-	opts.SetMaxPoolSize(5)
-	if client, err := mongo.Connect(context.Background(), opts); err != nil {
-		fmt.Println(err.Error())
-		fmt.Println(client)
+type Database struct {
+	mongo *mongo.Database
+}
+
+func NewChat() (*Database, error) {
+	// var client *Database.client
+	// uri := "mongodb+srv://gochat:gochat@cluster0.usyps.mongodb.net/?retryWrites=true&w=majority"
+	// opts := options.Client()
+	// opts.ApplyURI(uri)
+	// opts.SetMaxPoolSize(5)
+	// if client, err := mongo.Connect(context.Background(), opts); err != nil {
+	// 	fmt.Println(err.Error())
+	// 	fmt.Println(client)
+	// }
+	// var result bson.M
+	// command := bson.D{{"create", "Chat"}}
+	// conn := client.Database("gochat")
+	// if err := conn.RunCommand(context.TODO(), command).Decode(&result); err != nil {
+	// 	log.Fatal(err)
+	// }
+	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb+srv://gochat:gochat@cluster0.usyps.mongodb.net/?retryWrites=true&w=majority"))
+	if err != nil {
+		log.Fatal(err)
 	}
-	return client.Database("gochat")
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	err = client.Connect(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return &Database{mongo: client.Database("Chat")}, nil
+}
+
+func (d *Database) Item(ID primitive.ObjectID) (*Messages, error) {
+	var msg *Messages
+
+	chat := d.mongo.Collection("Chat").FindOne(Ctx, ID)
+	err := chat.Decode(&msg)
+	if err != nil {
+		return nil, fmt.Errorf("Error found when finding chat by ID, %v", err)
+	}
+
+	return msg, nil
 }
 func (msg *Messages) ID() primitive.ObjectID {
 	return msg.Id
 }
 
-func NewChat() (mongo.Collection, error) {
-	conn := InitiateMongoClient()
-	err := conn.CreateCollection(Ctx, "Chat")
-	// if collection != nil {
-	// 	fmt.Println("This is the result from creating the 'Chat' collection", collection)
-	// }
-
-	return collection, nil
-}
-
-func GetMessages() ([]*Messages, error) {
+func (d *Database) All() ([]*Messages, error) {
 	var msg *Messages
 
-	conn := InitiateMongoClient()
-	chats := conn.Collection("chats")
+	chats := d.mongo.Collection("Chat")
 	cursor, err := chats.Find(Ctx, bson.D{})
 	if err != nil {
 		defer cursor.Close(Ctx)
-		fmt.Errorf("Error finding all messages: %v", err)
+		fmt.Printf("Error finding all messages: %v", err)
 	}
 
 	messages := make([]*Messages, 0)
@@ -73,21 +92,22 @@ func GetMessages() ([]*Messages, error) {
 
 }
 
-func Create(msg *Messages) (*Messages, error) {
-	conn := InitiateMongoClient()
-	chats := conn.Collection("chats")
+func (d *Database) Create(msg *Messages) (*Messages, error) {
+
+	chats := d.mongo.Collection("chats")
 	message, err := chats.InsertOne(Ctx, msg)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating a messages")
+		return nil, fmt.Errorf("Error creating a messages %v", err)
 	}
+	//This fmt.Printf is for debug purposes
 	fmt.Printf("The result of insertedId %v : ", message.InsertedID)
 	return msg, err
 }
-func Update(msg *Messages, newMessage string) error {
-	conn := InitiateMongoClient()
-	chats := conn.Collection("chats")
+
+func (d *Database) Update(msg *Messages) error {
+	chats := d.mongo.Collection("chats")
 	filter := bson.D{{"_id", msg.Id}}
-	update := bson.D{{"Text", newMessage}}
+	update := bson.D{{"Text", msg}}
 	_, err := chats.UpdateOne(
 		Ctx,
 		filter,
@@ -96,10 +116,9 @@ func Update(msg *Messages, newMessage string) error {
 	return err
 }
 
-func Delete(msg *Messages) error {
-	conn := InitiateMongoClient()
-	chats := conn.Collection("chats")
-	_, err := chats.DeleteOne(Ctx, bson.D{{"_id", msg.Id}})
+func (d *Database) Delete(ID primitive.ObjectID) error {
+	chats := d.mongo.Collection("chats")
+	_, err := chats.DeleteOne(Ctx, bson.D{{"_id", ID}})
 	if err != nil {
 		return err
 	}
