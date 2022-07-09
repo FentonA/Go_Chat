@@ -1,0 +1,21 @@
+.body{
+    padding:12px;
+}
+.bubble{
+    background-color: rgb(78, 78, 255);
+    color: white;
+    height: fit-content;
+    width: fit-content;
+    border-radius: 20px;
+    margin: 0;
+}
+
+.text{
+    padding: 12px;
+    margin:0;
+}
+.time{
+    width: fit-content;
+    margin: 0;
+    font-size: smaller;
+}
